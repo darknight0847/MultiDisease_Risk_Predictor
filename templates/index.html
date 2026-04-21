@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MedScan AI — Multi-Disease Risk Predictor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:        #0a0e1a;
+      --surface:   #111827;
+      --surface2:  #1a2235;
+      --border:    #1e2d42;
+      --accent:    #00e5ff;
+      --accent2:   #ff4d6d;
+      --accent3:   #a78bfa;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --low:       #22c55e;
+      --mid:       #f59e0b;
+      --high:      #ef4444;
+      --mono:      'Space Mono', monospace;
+      --sans:      'DM Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated background grid ──────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ────────────────────────────────────────── */
+    header {
+      position: relative; z-index: 10;
+      border-bottom: 1px solid var(--border);
+      padding: 18px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      backdrop-filter: blur(12px);
+      background: rgba(10,14,26,.8);
+    }
+    .logo {
+      font-family: var(--mono);
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      color: var(--accent);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: var(--accent);
+      clip-path: polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pulse-dot {
+      width: 8px; height: 8px;
+      background: var(--low);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(34,197,94,.4); }
+      50%      { opacity:.7; box-shadow:0 0 0 8px rgba(34,197,94,0); }
+    }
+    .header-badge {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: 1px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 100px;
+    }
+
+    /* ── Layout ────────────────────────────────────────── */
+    .main {
+      position: relative; z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .hero {
+      text-align: center;
+      margin-bottom: 48px;
+      animation: fadeUp .6s ease both;
+    }
+    .hero-tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: 3px;
+      color: var(--accent);
+      border: 1px solid rgba(0,229,255,.3);
+      padding: 4px 16px;
+      border-radius: 100px;
+      margin-bottom: 16px;
+      background: rgba(0,229,255,.05);
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 3.2rem);
+      font-weight: 600;
+      line-height: 1.1;
+      letter-spacing: -.5px;
+      margin-bottom: 12px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ── Cards ─────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      animation: fadeUp .6s ease both;
+    }
+    .card-title {
+      font-family: var(--mono);
+      font-size: .75rem;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 2px;
+    }
+
+    /* ── Form ──────────────────────────────────────────── */
+    .field-group {
+      margin-bottom: 24px;
+    }
+    .field-group-label {
+      font-family: var(--mono);
+      font-size: .65rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .fields-row { display: grid; gap: 12px; }
+    .fields-row.cols-2 { grid-template-columns: 1fr 1fr; }
+    .fields-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .fields-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+    @media (max-width: 600px) {
+      .fields-row.cols-3, .fields-row.cols-4 { grid-template-columns: 1fr 1fr; }
+    }
+
+    .field label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .field input, .field select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: .85rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      -webkit-appearance: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,229,255,.1);
+    }
+    .field select option { background: var(--surface); }
+
+    .btn-run {
+      width: 100%;
+      margin-top: 8px;
+      padding: 14px;
+      background: var(--accent);
+      color: #0a0e1a;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--mono);
+      font-size: .85rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .btn-run:hover  { opacity: .88; }
+    .btn-run:active { transform: scale(.98); }
+    .btn-run:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Results panel ─────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 360px;
+      color: var(--muted);
+      text-align: center;
+      gap: 12px;
+    }
+    .empty-icon { font-size: 3rem; opacity: .25; }
+    .empty-state p { font-size: .9rem; line-height: 1.6; max-width: 220px; }
+
+    .disease-block { margin-bottom: 24px; }
+    .disease-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .disease-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .risk-badge {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-weight: 700;
+    }
+    .risk-badge.low  { background: rgba(34,197,94,.15); color: var(--low);  border: 1px solid rgba(34,197,94,.3); }
+    .risk-badge.mid  { background: rgba(245,158,11,.15); color: var(--mid);  border: 1px solid rgba(245,158,11,.3); }
+    .risk-badge.high { background: rgba(239,68,68,.15); color: var(--high); border: 1px solid rgba(239,68,68,.3); }
+
+    .bar-track {
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 100px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 1.2s cubic-bezier(.22,1,.36,1);
+    }
+    .bar-fill.low  { background: var(--low); }
+    .bar-fill.mid  { background: var(--mid); }
+    .bar-fill.high { background: var(--high); }
+
+    .risk-pct {
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--muted);
+      text-align: right;
+    }
+
+    /* SHAP toggle */
+    .shap-toggle {
+      margin-top: 8px;
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: 1px;
+      color: var(--accent3);
+      background: rgba(167,139,250,.08);
+      border: 1px solid rgba(167,139,250,.2);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: background .2s;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .shap-toggle:hover { background: rgba(167,139,250,.14); }
+    .shap-body {
+      margin-top: 8px;
+      display: none;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .shap-body img { width: 100%; display: block; border-radius: 8px; }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+    .result-success {
+      font-family: var(--mono);
+      font-size: .7rem;
+      letter-spacing: 1px;
+      color: var(--low);
+      background: rgba(34,197,94,.06);
+      border: 1px solid rgba(34,197,94,.2);
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .disclaimer {
+      font-size: .72rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 12px;
+      line-height: 1.6;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(255,255,255,.02);
+    }
+
+    /* ── Spinner ────────────────────────────────────────── */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(10,14,26,.4);
+      border-top-color: #0a0e1a;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+
+    @keyframes fadeUp {
+      from { opacity:0; transform:translateY(18px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .card:nth-child(2) { animation-delay: .1s; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    MEDSCAN·AI
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="pulse-dot"></div>
+    <span class="header-badge">XGBoost Ensemble v1.0</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <div class="hero">
+    <div class="hero-tag">AI-POWERED DIAGNOSTICS</div>
+    <h1>Multi-Disease <span>Risk Predictor</span></h1>
+    <p>Enter patient biomarkers to get simultaneous risk assessments for Diabetes, Heart Disease, and Liver Disease — with AI-explainable SHAP insights.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- ── Input Form ────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Patient Biomarkers</div>
+
+      <form method="POST" id="predictForm">
+
+        <div class="field-group">
+          <div class="field-group-label">Demographics &amp; Body</div>
+          <div class="fields-row cols-3">
+            <div class="field">
+              <label>Gender</label>
+              <select name="gender">
+                <option value="1" {% if form_data.get('gender')=='1' %}selected{% endif %}>Male</option>
+                <option value="2" {% if form_data.get('gender')=='2' %}selected{% endif %}>Female</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Age (yrs)</label>
+              <input type="number" name="age" value="{{ form_data.get('age', '45') }}" required min="1" max="120"/>
+            </div>
+            <div class="field">
+              <label>BMI</label>
+              <input type="number" name="bmi" value="{{ form_data.get('bmi', '25.0') }}" step="any" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-group-label">Cardiovascular</div>
+          <div class="fields-row cols-3">
+            <div class="field">
+              <label>Systolic BP</label>
+              <input type="number" name="sys_bp" value="{{ form_data.get('sys_bp', '120') }}" step="any" required/>
+            </div>
+            <div class="field">
+              <label>Diastolic BP</label>
+              <input type="number" name="dia_bp" value="{{ form_data.get('dia_bp', '80') }}" step="any" required/>
+            </div>
+            <div class="field">
+              <label>Waist (cm)</label>
+              <input type="number" name="waist" value="{{ form_data.get('waist', '90') }}" step="any" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <div class="field-group-label">Laboratory Values</div>
+          <div class="fields-row cols-4">
+            <div class="field">
+              <label>Glucose</label>
+              <input type="number" name="glucose" value="{{ form_data.get('glucose', '100') }}" step="any" required/>
+            </div>
+            <div class="field">
+              <label>Cholesterol</label>
+              <input type="number" name="cholesterol" value="{{ form_data.get('cholesterol', '180') }}" step="any" required/>
+            </div>
+            <div class="field">
+              <label>Urine Albumin</label>
+              <input type="number" name="albumin" value="{{ form_data.get('albumin', '10') }}" step="any" required/>
+            </div>
+            <div class="field">
+              <label>ACR</label>
+              <input type="number" name="acr" value="{{ form_data.get('acr', '15') }}" step="any" required/>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-run" id="submitBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          RUN ANALYSIS
+        </button>
+      </form>
+
+      <div class="disclaimer">
+        ⚠️ For research &amp; educational purposes only. Not a substitute for professional medical advice.
+      </div>
+    </div>
+
+    <!-- ── Results ───────────────────────────── -->
+    <div class="card">
+      <div class="card-title">Risk Assessment Report</div>
+
+      {% if results %}
+        <div class="result-success">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M20 6 9 17l-5-5"/></svg>
+          ANALYSIS COMPLETE — 3 MODELS EVALUATED
+        </div>
+
+        {% for disease, data in results.items() %}
+          {% if data.risk > 70 %}
+            {% set level = 'high' %}
+            {% set label = 'HIGH RISK' %}
+          {% elif data.risk > 30 %}
+            {% set level = 'mid' %}
+            {% set label = 'MODERATE' %}
+          {% else %}
+            {% set level = 'low' %}
+            {% set label = 'LOW RISK' %}
+          {% endif %}
+
+          <div class="disease-block">
+            <div class="disease-header">
+              <span class="disease-name">{{ disease }}</span>
+              <span class="risk-badge {{ level }}">{{ label }}</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill {{ level }}" style="width: {{ data.risk }}%"></div>
+            </div>
+            <div class="risk-pct">{{ data.risk }}% risk probability</div>
+
+            <details>
+              <summary class="shap-toggle">
+                <span>▸ VIEW AI EXPLANATION (SHAP)</span>
+                <span style="opacity:.5">Waterfall Plot</span>
+              </summary>
+              <div class="shap-body" style="display:block; margin-top:8px;">
+                <img src="data:image/png;base64,{{ data.plot }}" alt="SHAP explanation for {{ disease }}"/>
+              </div>
+            </details>
+          </div>
+
+          {% if not loop.last %}<hr class="divider">{% endif %}
+        {% endfor %}
+
+        <div class="disclaimer" style="margin-top:16px">
+          Powered by XGBoost + SHAP explainability. Risk scores reflect model probability, not clinical diagnosis.
+        </div>
+
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-icon">⬡</div>
+          <strong style="font-family:var(--mono);font-size:.8rem;letter-spacing:1px;color:var(--muted)">AWAITING INPUT</strong>
+          <p>Enter patient vitals on the left and run the analysis to see risk scores &amp; AI explanations.</p>
+        </div>
+      {% endif %}
+    </div>
+
+  </div>
+</main>
+
+<script>
+  document.getElementById('predictForm').addEventListener('submit', function() {
+    const btn = document.getElementById('submitBtn');
+    btn.innerHTML = '<div class="spinner"></div> ANALYZING...';
+    btn.disabled = true;
+  });
+</script>
+
+</body>
+</html>
